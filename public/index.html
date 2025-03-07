@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8 max-w-3xl">
+        <h1 class="text-3xl font-bold mb-8 text-center">Task Manager</h1>
+        
+        <form id="taskForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <div class="mb-4">
+                <input type="text" id="title" placeholder="Task Title" 
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            </div>
+            <div class="mb-4">
+                <textarea id="description" placeholder="Task Description" 
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+            </div>
+            <button type="submit" 
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full">
+                Add Task
+            </button>
+        </form>
+
+        <div id="taskList" class="space-y-4"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        
+        // Fetch all tasks
+        async function fetchTasks() {
+            const response = await fetch(`${API_URL}/tasks`);
+            const tasks = await response.json();
+            displayTasks(tasks);
+        }
+
+        // Display tasks
+        function displayTasks(tasks) {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = tasks.map(task => `
+                <div class="bg-white shadow-md rounded px-8 pt-6 pb-8" data-id="${task._id}">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-bold text-xl mb-2">${task.title}</h3>
+                            <p class="text-gray-700">${task.description}</p>
+                            <div class="mt-4">
+                                <select class="status-select border rounded py-1 px-2" onchange="updateTaskStatus('${task._id}', this.value)">
+                                    <option value="pending" ${task.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                    <option value="in-progress" ${task.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                                    <option value="completed" ${task.status === 'completed' ? 'selected' : ''}>Completed</option>
+                                </select>
+                                <span class="text-sm text-gray-500 ml-4">
+                                    ${new Date(task.createdAt).toLocaleDateString()}
+                                </span>
+                            </div>
+                        </div>
+                        <button onclick="deleteTask('${task._id}')" 
+                            class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Add new task
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            
+            if (!title.trim()) return;
+
+            const response = await fetch(`${API_URL}/tasks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, description })
+            });
+
+            if (response.ok) {
+                document.getElementById('title').value = '';
+                document.getElementById('description').value = '';
+                fetchTasks();
+            }
+        });
+
+        // Update task status
+        async function updateTaskStatus(id, status) {
+            const response = await fetch(`${API_URL}/tasks/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+
+            if (response.ok) {
+                fetchTasks();
+            }
+        }
+
+        // Delete task
+        async function deleteTask(id) {
+            if (!confirm('Are you sure you want to delete this task?')) return;
+            
+            const response = await fetch(`${API_URL}/tasks/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                fetchTasks();
+            }
+        }
+
+        // Initial load
+        fetchTasks();
+    </script>
+</body>
+</html>
